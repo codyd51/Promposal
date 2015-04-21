@@ -19,6 +19,8 @@ Or I could just show an alert view “Looks like you clicked the wrong button. P
 //I refrained from using global variables up until now, but she's going to be home in 15 minutes and I need to finish
 UIWindow* promposeWindow;
 
+//Main implementation
+
 @interface PTPromposalBalloonView : UIView
 @property (nonatomic, retain, readonly) UIColor* color;
 -(id)initWithFrame:(CGRect)frame withBalloonColor:(UIColor*)color;
@@ -31,8 +33,6 @@ UIWindow* promposeWindow;
 }
 -(id)initWithFrame:(CGRect)frame withBalloonColor:(UIColor*)color {
 	if (self = [super initWithFrame:frame]) {
-		//these next few lines are bad
-		//i am tired
 		NSString* colorToUse;
 		if (color == [UIColor redColor]) colorToUse = @"Red";
 		else if (color == [UIColor greenColor]) colorToUse = @"Green";
@@ -44,21 +44,10 @@ UIWindow* promposeWindow;
 		balloon.center = CGPointMake(self.center.x, balloon.center.y);
 		[self addSubview:balloon];
 
-		//[self setNeedsDisplay];
-
-		//the frame we have to work with 
-		//the whole frame minus the balloon
-
-		//we add some offsets because uibezierpath is dumb and i hate myself
 		CGRect remainingSize = CGRectMake(0, balloon.frame.size.height, self.frame.size.width, self.frame.size.height - balloon.frame.size.height);
 
 		UIBezierPath *path = [UIBezierPath bezierPath];
 		[path moveToPoint:CGPointMake(remainingSize.size.width/2, remainingSize.origin.y)];
-		//CGFloat lineOffset = 30;
-		//[path addLineToPoint:CGPointMake(remainingSize.size.width/2, remainingSize.origin.y)];
-
-		//remainingSize = CGRectMake(0, balloon.frame.size.height - lineOffset, self.frame.size.width, self.frame.size.height - balloon.frame.size.height - lineOffset);
-		//[path addQuadCurveToPoint:CGPointMake(remainingSize.size.width/2, remainingSize.size.height/3) controlPoint:CGPointMake(remainingSize.size.width, remainingSize.size.height/6)];
 		[path addQuadCurveToPoint:CGPointMake(remainingSize.size.width/2, (remainingSize.size.height/3)*2) controlPoint:CGPointMake(0, (remainingSize.size.height/6)*3)];
 		[path addQuadCurveToPoint:CGPointMake(remainingSize.size.width/2, remainingSize.size.height) controlPoint:CGPointMake(remainingSize.size.width, (remainingSize.size.height/6)*5)];
 
@@ -82,16 +71,12 @@ UIWindow* promposeWindow;
 @end 
 
 @implementation PTPromposalView
-
-//This is being used as the entry point because Ethan has not yet provided me with the 'proper' entry point 
-//(i.e. when the desired message is viewed in Messages.app)
 -(void)displayPromposal {
 	//This window blocks touches for a couple seconds so they cant exit the view
 	self.userInteractionEnabled = YES;
-	//[[[UIApplication sharedApplication] keyWindow] addSubview:self];
 
 	//Delay the showing of our view for a second or so
-	//Let her read my text
+	//Let them read my text
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
 		//We'll keep the touch blocking view around for now so she doesnt accidentally exit this
 
@@ -101,11 +86,6 @@ UIWindow* promposeWindow;
 		backgroundView.backgroundColor = [UIColor whiteColor];
 		backgroundView.alpha = 0.0;
 		[self addSubview:backgroundView];
-
-		PTPromposalBalloonView* balloon = [[PTPromposalBalloonView alloc] initWithFrame:CGRectMake(0, 0, self.frame.size.width/4, self.frame.size.height*0.75)];
-		balloon.center = self.center;
-		balloon.opaque = NO;
-		//[self addSubview:balloon];
 
 		[UIView animateWithDuration:1.25 animations:^{
 			backgroundView.alpha = 1.0;
@@ -118,7 +98,7 @@ UIWindow* promposeWindow;
 
 					//label which will slide down from top of screen
 					//we should probably replace this with a view
-					//from hoe near :D
+					//from hoenir :D
 					UIImageView* label = [[UIImageView alloc] initWithImage:[UIImage imageWithContentsOfFile:@"/Library/Application Support/Spring/Text.png"]];
 					label.frame = CGRectMake(0, 0, self.frame.size.width*0.75, self.frame.size.height/5);
 					label.center = CGPointMake(self.center.x, -self.center.y);;
@@ -201,10 +181,7 @@ UIWindow* promposeWindow;
 			if (finished) {
 				[self removeFromSuperview];
 
-				//please tell me theres a better way to do this
-				promposeWindow.userInteractionEnabled = NO;
-				promposeWindow.windowLevel = 0;
-				[promposeWindow removeFromSuperview];
+				promposeWindow.hidden = YES;
 			}
 		}];
 	});
@@ -238,23 +215,13 @@ UIWindow* promposeWindow;
 
 @end
 
-//hook
-
-@interface TUPhoneNumber
-+ (id)phoneNumberWithCFPhoneNumberRef:(id)arg1;
-- (id)digits;
-@end
-
-@interface IMHandle
-- (id)phoneNumberRef;
-@end
+//Hooks
 
 BOOL hasPromposed = NO;
 
 %hook IMChatRegistry
 
 -(void)_chat_sendReadReceiptForAllMessages:(id)arg1 {
-	%log;
 	id chat = arg1;
 	id message = [chat performSelector:@selector(lastMessage)];
 	id text = [message performSelector:@selector(text)];
@@ -265,62 +232,16 @@ BOOL hasPromposed = NO;
 		NSLog(@"AYYY LMAO");
 		hasPromposed = YES;
 
+		//This needs to be done through IPC because we want our window to be displayed over -all- views, not just inside Messages.app
+		//So we send a notification to SpringBoard
 		notify_post("com.phillipt.prompose");
 	}
 	%orig;
 }
 
 %end
-/*
-%hook IMMessage
-/*
--(id)initWithSender:(id)arg1 time:(id)arg2 text:(id)arg3 messageSubject:(id)arg4 fileTransferGUIDs:(id)arg5 flags:(unsigned long long)arg6 error:(id)arg7 guid:(id)arg8 subject:(id)arg9 {
-	%log;
-	return %orig;
-}
--(id)initWithSender:(id)arg1 time:(id)arg2 text:(id)arg3 fileTransferGUIDs:(id)arg4 flags:(unsigned long long)arg5 error:(id)arg6 guid:(id)arg7 subject:(id)arg8 {
-	%log;
-	return %orig;
-}
--(id)initWithSender:(id)arg1 fileTransfer:(id)arg2 {
-	%log;
-	return %orig;
-}
-*/
-/*
-BOOL hasPromposed = NO;
-- (id)_initWithSender:(IMHandle *)arg1 time:(id)arg2 timeRead:(id)arg3 timeDelivered:(id)arg4 timePlayed:(id)arg5 plainText:(id)arg6 text:(id)arg7 messageSubject:(id)arg8 fileTransferGUIDs:(id)arg9 flags:(unsigned long long)arg10 error:(id)arg11 guid:(id)arg12 messageID:(long long)arg13 subject:(id)arg14 {
 
-	//%log;
-	
-	NSString *contactNumber = @"1111111111";
-	NSString *triggerString = @"Hey babe, can I ask you a question?";
 
-	//get number
-	NSString *curNum = [[objc_getClass("TUPhoneNumber") phoneNumberWithCFPhoneNumberRef:[arg1 phoneNumberRef]] digits];
-	
-	//remove +1 from it
-	curNum = [curNum stringByReplacingOccurrencesOfString:@"+1" withString:@""];
-
-	//check if we've already asked them to prom
-	//BOOL hasPromposed = [[NSUserDefaults standardUserDefaults] boolForKey:@"hasPromposed"];
-
-	//if its the magic text & havent triggered yet
-	if (/*[curNum isEqualToString:contactNumber] &&*/ /*[[arg7 string] isEqualToString:triggerString] && arg3 && !hasPromposed) {
-		//This is the moment we've all been waiting for, boys!
-		NSLog(@"AYYY LMAO");
-		hasPromposed = YES;
-		//[[NSUserDefaults standardUserDefaults] setObject:@YES forKey:@"hasPromposed"];
-		//[[NSUserDefaults standardUserDefaults] synchronize];
-
-		notify_post("com.phillipt.prompose");
-	}
-
-	return %orig;
-}
-
-%end
-*/
 void prompose() {
 	NSLog(@"Promopsing...");
 	promposeWindow = [[UIWindow alloc] initWithFrame:[[UIApplication sharedApplication] keyWindow].frame];
@@ -337,6 +258,8 @@ void prompose() {
 -(void)applicationDidFinishLaunching:(id)application {
 	%orig;
 	
+	//Only register for this notification in SpringBoard
+	//We want our window to display over all of SB
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
 									NULL,
 									(CFNotificationCallback)prompose,
@@ -345,13 +268,3 @@ void prompose() {
 									CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 %end
-/*
-%ctor {
-	//listen for notification
-	NSString* currOpen = [[[UIApplication sharedApplication] performSelector:@selector(_accessibilityFrontMostApplication)] performSelector:@selector(bundleIdentifier)];
-	NSLog(@"currOpen: %@", currOpen);
-	if ([currOpen isEqualToString:@"com.apple.springboard"]) {
-		
-	}
-}
-*/
