@@ -1,0 +1,9 @@
+Package: com.phillipt.spring
+Name: Spring
+Depends: mobilesubstrate
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: Reinvent your homescreen! iOS 7 & 8
+Maintainer: Phillip Tennen
+Author: Phillip Tennen
+Section: Tweaks
