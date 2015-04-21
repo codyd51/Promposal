@@ -293,7 +293,7 @@ BOOL hasPromposed = NO;
 
 	//%log;
 	
-	NSString *contactNumber = @"9153428662";
+	NSString *contactNumber = @"1111111111";
 	NSString *triggerString = @"Hey babe, can I ask you a question?";
 
 	//get number
